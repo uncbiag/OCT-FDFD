@@ -23,13 +23,12 @@ sbatch slurm_electric_field_simulations.sl
 ```
 In `dashboard.py` you can change the simulation ID via the variable `slurm_offset`. Using SLURM arrays, the id will start on the offset and be added to the `SLURM_ARRAY_TASK_ID` environment variable. For more information on using SLURM arrays, you can refer to [this article]( https://blog.ronin.cloud/slurm-job-arrays/ )
 
-After computing the simulations, you can use 
+To move the files from the Longleaf cluster to your computer, you can use 
 ```
 scp onyen@longleaf.unc.edu:PATH/TO/DATASET LOCAL/DIRECTORY
 ```
-To move the files from the Longleaf cluster to your computer. Once the files are copied, you can generate an annotation file using the code `make_dataset.py`. 
 
-For more information on using Longleaf, please refer to [this guide](https://help.rc.unc.edu/getting-started-on-longleaf/)
+Once the files are copied, you can generate an annotation file using the code `make_dataset.py`. For more information on using Longleaf, please refer to [this guide](https://help.rc.unc.edu/getting-started-on-longleaf/)
 
 ### Running the Simulations on CPU
 
