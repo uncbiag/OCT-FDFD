@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.sparse import diags, linalg, csc_matrix
 import time
+import random
 
 
 # ------------------ Electric Simulation Functions ------------------
@@ -35,10 +36,8 @@ def yeeder2d(grid_size, resolution, k=None):
         d0 = - np.ones(M)
         d1 = np.ones(M - 1)
         d1[range(Nx - 1, M - 1, Nx)] = 0
-        # print(np.array([d0, d1]))
         DEx = (1 / dx) * diags([d0, d1], [0, 1])
-        DEx = DEx.toarray()
-        # DEx = torch.tensor(DEx)
+
 
     ### Building DEy
     if Ny == 1:
@@ -47,8 +46,7 @@ def yeeder2d(grid_size, resolution, k=None):
         d0 = - np.ones(M)
         d1 = np.ones(int(M - Nx))
         DEy = (1 / dy) * diags([d0, d1], [0, Nx])
-        DEy = DEy.toarray()
-        # DEy = torch.tensor(DEy)
+
 
     ### Build DHx and DHy
     DHx = - DEx.transpose()
@@ -379,4 +377,114 @@ def three_layered_medium(er1, er2, er3, er4, nz1, nz2, nz3, Nx, Ny):
     ER[:, nz1:nz2] = er2
     ER[:, nz2:nz3] = er3
     ER[:, nz3:] = er4
+    return ER
+
+
+def circles_2D(Sx, Sy, dx, dy, NPML, S_avg_radius, S_std_radius, er_max, random_seed, noise=True):
+    """
+    Creates a 2D electric permittivity device with 2-5 circles
+    Arguments:
+        Sx: Size of the x coordinate in micrometers
+        Sy: Size of the y coordinate in micrometers
+        dx: Incremental in x in micrometers
+        dy: Incremental in y in micrometers
+        NPML: 4-element array describing the NPML range in pixels
+        S_avg_radius: Size of the average radius of our circles in micrometers
+        S_std_radius: Standard deviation of the radius of our circles in micrometers
+        er_max: maximum value of our the electric permittivity in our device
+        random_seed: random seed for the pseudo-random number generator
+        noise (bool): Adds scatterer noise (i.e. particles of radius 0.5 micrometers)
+    Returns:
+        ER (array): Electric permittivity of randomly placed circles
+    """
+    # Compute the size in pixels
+    Nx = int(NPML[0] + np.ceil(Sx/dx) + NPML[1])
+    Ny = int(NPML[2] + np.ceil(Sy/dy) + NPML[3])
+
+    # Compute ER background solution
+    random.seed(random_seed)
+    er_solution = random.uniform(1, 1.1)
+    ER = er_solution * np.ones((Nx, Ny))
+
+    # Determine the number of circles
+    random.seed(random_seed)
+    num_circles = random.randint(2, 5)
+
+    # Create a list of tuples of the centers of the circles
+    N_avg_radius = np.ceil(S_avg_radius / dx)
+    N_avg_diam = 2 * N_avg_radius
+    random.seed(random_seed)
+    pixel_range_x = int(Nx - N_avg_diam)
+    pixel_range_y = int(Ny - N_avg_diam)
+    centers_range = [divmod(x, pixel_range_x) for x in random.sample(range(pixel_range_x * pixel_range_y), num_circles)]
+    centers = [tuple(map(sum, zip(x, (NPML[0] + N_avg_radius, NPML[2] + N_avg_radius)))) for x in centers_range]
+
+    # Create radius
+    np.random.seed(random_seed)
+    radii_normal_dist = sorted(np.random.normal(S_avg_radius, S_std_radius, 1000))
+    random.seed(random_seed)
+    radii = random.sample(radii_normal_dist, num_circles)
+    radii_n = []
+    for i in range(num_circles):
+        radius_s = abs(radii[i])
+        radius_n = radius_s / dx
+        # Resizing radius so that it is inside the left NPML
+        if centers[i][0] - radius_n < NPML[0]:
+            difference = NPML[0] - (centers[i][0] - radius_n)
+            radius_n = radius_n - difference
+        # Resizing radius so that it is inside the right NPML
+        if (centers[i][0] + radius_n) > (Nx - NPML[1]):
+            difference = (centers[i][0] + radius_n) - (Nx - NPML[1])
+            radius_n = radius_n - difference
+        # Resizing radius so that it is inside the top NPML
+        if centers[i][1] - radius_n < NPML[2]:
+            difference = NPML[2] - (centers[i][1] - radius_n)
+            radius_n = radius_n - difference
+        # Resizing radius so that it is inside the bottom NPML
+        if (centers[i][1] + radius_n) > (Ny - NPML[3]):
+            difference = (centers[i][1] + radius_n) - (Ny - NPML[3])
+            radius_n = radius_n - difference
+
+        radii_n.append(radius_n)
+
+    # Removing overlapping between circles
+    for i in range(num_circles):
+        for j in range(i, num_circles):
+            if i != j:
+                distances_between_circles = np.sqrt((centers[i][0] - centers[j][0])**2 + (centers[i][1] - centers[j][1])**2)
+                while (radii_n[i] + radii_n[j]) > distances_between_circles:
+                    radii_n[i] -= 1
+                    radii_n[j] -= 1
+
+    # Filling in the circles
+    er_vals = sorted(np.linspace(er_solution, er_max, 1000))
+    random.seed(random_seed)
+    er = random.sample(er_vals, num_circles)
+
+    for k in range(num_circles):
+        center = centers[k]
+        radius = radii_n[k]
+        for i in range(Nx):
+            for j in range(Ny):
+                if (i - center[0]) ** 2 + (j - center[1]) ** 2 <= radius ** 2:
+                    ER[i, j] = er[k]
+
+    # Creating scatterers if noise
+    if noise:
+        num_scatterers = 100
+        random.seed(random_seed)
+        scatterers_centers_range = [divmod(x, pixel_range_x) for x in random.sample(range(pixel_range_x * pixel_range_y), num_scatterers)]
+        scatterers_centers = [tuple(map(sum, zip(x, (NPML[0] + N_avg_radius, NPML[2] + N_avg_radius)))) for x in scatterers_centers_range]
+        radius = 0.5 / dx
+        noise_dist = sorted(np.linspace(0.8, 1.2, 1000))
+        random.seed(random_seed)
+        random_noise = random.sample(noise_dist, num_scatterers)
+        for k in range(len(scatterers_centers)):
+            noise_prod = random_noise[k]  # Increase or decrease the current ER value by 20%
+            center = scatterers_centers[k]
+            for i in range(Nx):
+                for j in range(Ny):
+                    if (i - center[0]) ** 2 + (j - center[1]) ** 2 <= radius **2:
+                        ER[i, j] = noise_prod * ER[i, j]
+
     return ER
