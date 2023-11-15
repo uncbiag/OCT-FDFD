@@ -54,6 +54,10 @@ If you are training the layer remotely with an `ssh` connection, remember to con
 
 Optical Coherence Tomography (OCT) is a non-invasive imaging technique that utilizes the principle of coherence to generate images along the depth of a tissue. An OCT device consists of a light source that emits a broad spectrum of light in near-infrared wavelengths, an interferometer that splits the light into two beams, a reference arm that reflects one of the beams back to the interferometer, and a sample arm that directs the other beam to the tissue being imaged.
 
+<p align="center">
+  <img alt="Schematic of an interferometer from (Drexler, 2008)" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/MichelsonInter.png" width=80% heights=80%>
+</p>
+
 When both fields return from the reference and sample arms respectively, they are halved in power again and interfere at the detector, which generates a photocurrent given by 
 
 $$ I_D(k, \omega) = \frac{1}{2} |E_R + E_S|^2 $$
@@ -78,6 +82,38 @@ Since the amplitude of the incident field is defined in terms of the wavenumber 
 
 Computing the A-Line is a very straightforward approach from the equations presented in this writeup, however, we still need to figure out how to simulate the electric field that comes from the sample arm.
 
-### FDFD
+### Finite Differences for Maxwell's Equations
+
+The basic characteristics of light, such as refraction, diffraction, and scattering, are explained by Maxwell's equations, which also describe how light travels through and interacts with materials. The frequency-domain formulation of Maxwell's equations is 
+
+$$ \nabla \bullet \left(\[\varepsilon_r\] \tilde{E}\right) = 0 $$
+
+$$ \nabla \bullet \left(\[\mu_r\]\hat{H}) \right) = 0 $$
+
+$$ \nabla \times \tilde{E} = k_0 \[\mu_r\]\hat{H}$$
+
+$$ \nabla \times \hat{H} = k_0 \[\varepsilon_r\] \tilde{E} $$
+
+After expanding these equations in Cartesian coordinates and reducing them to two dimensions, we can use finite differences to come up with the following equation to solve for the electric field (based on the curl equations in Maxwell's equations):
+
+$$ \frac{\partial}{\partial x'} \mu_y^{-1} \frac{\partial}{\partial x'} E_z + \frac{\partial}{\partial y'} \mu_x^{-1} \frac{\partial}{\partial y'} E_z + \varepsilon_z E_z = 0 $$
+
+Note that we can come up with a similar equation to solve for the magnetic field $H_z$. While this equation already enforces Maxwell's equations, a source vector has to be incorporated so that the electric and magnetic fields have solutions different from zero. This source vector $b = Q f_{src}$ is comprised of a mask $Q$ that separates the Total Field (TF) and the Scattered Field (SF) and an initial source field $f_{src}$.In turn, the source function is defined as a plane wave so that
+
+$$f_{src}(x, y) = \exp \[-i(k_{x, inc}x + k_{y, inc} y \]$$
+
+$$k_{x, inc} = k_0 \sqrt{\mu \varepsilon} \sin \theta_{inc}$$
+
+$$k_{y, inc} = k_0 \sqrt{\mu \varepsilon} \sin \theta_{inc}$$
+
+Thus, we can simulate an electric field by solving for $E_z$ in the following equation:
+
+$$ \frac{\partial}{\partial x'} \mu_y^{-1} \frac{\partial}{\partial x'} E_z + \frac{\partial}{\partial y'} \mu_x^{-1} \frac{\partial}{\partial y'} E_z + \varepsilon_z E_z = b $$
+
+### Implementation of FDFD
+
+For more information about the implementation, 
+
+
 
 
