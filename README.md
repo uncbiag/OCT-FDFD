@@ -50,4 +50,34 @@ If you are training the layer remotely with an `ssh` connection, remember to con
 
 ## Description of Algorithm
 
+### OCT Intensity and A-Line Construction
+
+Optical Coherence Tomography (OCT) is a non-invasive imaging technique that utilizes the principle of coherence to generate images along the depth of a tissue. An OCT device consists of a light source that emits a broad spectrum of light in near-infrared wavelengths, an interferometer that splits the light into two beams, a reference arm that reflects one of the beams back to the interferometer, and a sample arm that directs the other beam to the tissue being imaged.
+
+When both fields return from the reference and sample arms respectively, they are halved in power again and interfere at the detector, which generates a photocurrent given by 
+
+$$ I_D(k, \omega) = \frac{1}{2} |E_R + E_S|^2 $$
+
+On the other hand, we can define the power spectral density of the source electric field $E_i$ as   
+
+$$ S(k) = |s(k, \omega)|^2 = \frac{1}{\Delta k \sqrt{\pi}}e^{- \frac{(k - k_0)}{\Delta k}\^2}$$
+
+Where $k_0$ is the central wavenumber of the light source spectrum and $\Delta k$ is the spectral bandwidth, which corresponds to the half-width-half-maximum of the light source power spectrum.
+
+From the power spectral density, we can simulate the reference electric field in the following way
+
+$$  E_R = \frac{E_i}{\sqrt{2}} r_R e^{i2kz_R} $$
+
+Where $r_R$ is the electric field reflectivity of the reference reflector, $z_R$ is the distance from the beamsplitter to the reference arm, and the factor of $2$ corresponds to the distance that the light has to travel to and from the reference reflector. 
+
+In order to construct the A-line scan, it is necessary to take the inverse Fourier transform of $I_D(k, \omega)$ and subtract the dominant reference spectrum. That is the inverse Fourier transform will be applied to 
+
+$$  I_D(k) - |E_R|^2 $$
+
+Since the amplitude of the incident field is defined in terms of the wavenumber $k$, the inverse fourier transform will be in terms of depth $z$. To obtain the increment in the $z$-domain, we use the formula $\delta_z = 2 \pi / 2 \text{N} \delta_k$, where N is the number of sample points that are used to model the spectrum amplitude $s(k, \omega)$ and the electric fields $E_S(k)$. 
+
+Computing the A-Line is a very straightforward approach from the equations presented in this writeup, however, we still need to figure out how to simulate the electric field that comes from the sample arm.
+
+### FDFD
+
 
