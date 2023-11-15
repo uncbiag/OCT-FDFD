@@ -150,11 +150,27 @@ Note that we need a mask matrix $Q$ that separates the Scattered Field and the T
 
 Now that we know how to simulate an electric field that passes through a device, how can we use this to create a signal as it would be received by an OCT device?
 
-It is relevant to now define the difference between the Scattered Field and the Total Field in the simulation. The Total Field is where our device is, and where we can see how the light moves and interacts with the materials in it. On the other hand, the scattered field is the electric field that goes out of the simulation after light has traversed through the material. That is, the scattered field is what a device like OCT would capture. 
+It is relevant to now define the difference between the Scattered Field and the Total Field in the simulation. The Total Field is where our device is, and where we can see how the light moves and interacts with the materials in it. On the other hand, the scattered field is the electric field that goes out of the simulation after light has traversed through the material. That is, the scattered field is what a device like OCT would capture. In the following figure, the scattered field is denoted as $E_ref$
+
+<p align="center">
+  <img alt="3D Yee Grid" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/RumpfEref.png" width=40% heights=40%>
+</p>
+
+However, we are most interested is not the scattered field, but the reflectivity of the scattered field. In order to obtain this measurement, we devide the scattered field by the original source field.
+
+$$ r_S = \frac{E_{ref}}{E_{i}} $$
+
+In which case, the electric field from the sample arm of an OCT device becomes
+
+$$ E_S = \frac{s(k, \omega)}{\sqrt{2}} r_S $$
+
+where $s(k, \omega)$ is the square root of the power spectrum $S(k)$ as previously defined.
+
+Now that we are able to simulate the source power spectrum, the reference electric field, and the sample electric field, we can easily compute the A-line using the Fourier transform.
+
+### Example
 
 
-
-However, we are most interested is not the scattered field, but the reflectivity of the scattered field. In order to obtain this 
 
 
 
