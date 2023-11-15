@@ -7,7 +7,7 @@ Simulates OCT images by solving Maxwell's equations through a Finite-Difference 
 
 **OCT Source**
 
-The parameters needed to simulate the OCT source can be found in `dashboard.py`. It is recommended that you do not modify the units and the constants. If you wish to modify the OCT source, keep in mind that the bandwidth affects the Nyquist sampling frequency. For OCT, the broader the bandwidth, the more resolution. However, the broader the bandwidth, the more samples you have to take so that the sampling frequency is higher than the Nyquist frequency. Refer to the variables `nyquist_spacing` and `delta_k` in `compute_electric_simulation.py` to see if `delta_k > nyquist_spacing`.  
+The parameters needed to simulate the OCT source can be found in `dashboard.py`. It is recommended that you do not modify the units and the constants. If you wish to modify the OCT source, keep in mind that the bandwidth affects the Nyquist sampling frequency. For OCT, the broader the bandwidth, the more resolution. However, the broader the bandwidth, the harder it is to get the sampling frequency higher than the Nyquist frequency. Refer to the variables `nyquist_spacing` and `delta_k` in `compute_electric_simulation.py` to see if `delta_k < nyquist_spacing`.  
 
 **Properties of the Layered Medium**
 
@@ -47,6 +47,10 @@ python MLP.py
 To train the Multi-Layer Perceptron. Look at the comments on the code to modify any hyperparameters such as the number of hidden layers/nodes, the optimizer, the learning rate, etc. 
 
 If you are training the layer remotely with an `ssh` connection, remember to conect with `-X` or `-Y` to enable X11 forwarding to see the graphics.
+
+### 2D Simulation
+
+Note that the variables for running a 2D simulation with `compute_electric_simulation_2D.py` are also included in the dashboard and can be run in a similar way as the 1D simulation. The slurm script will have to reflect the change in the Python script running.
 
 ## Description of Algorithm
 
@@ -112,7 +116,46 @@ $$ \frac{\partial}{\partial x'} \mu_y^{-1} \frac{\partial}{\partial x'} E_z + \f
 
 ### Implementation of FDFD
 
-For more information about the implementation, 
+For more information about the implementation of a Finite-Difference Frequency-Domain solver, please refer to [Electromagnetic and Photonic Simluation for the Beginner](https://empossible.net/fdfdbook/) by Raymond C. Rumpf. In general, this section will only discuss three functions found in `electric_funcs.py`.
+
+`yeeder_2d`: In order to solve for the field $E_z$, we need to define how we are calculating the differentials in the equation. In order to do this, we need to combine forward and backward differences based on a staggered grid scheme, called the Yee grid. In order to compute the differentials, we create matrices that reflect these forward and backward differences. If we are working with a MxN surface area of the device we are simulating, then the differential matrices are going to be MN x MN. Because of this, the matrices need to be created sparsely, and any computation done sparsely.
+
+<p align="center">
+  <img alt="3D Yee Grid" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/yee.png" width=50% heights=50%>
+</p>
+
+`addupml2d_sparse`: During simulation, waves will propagate until they reach the boundary and will bounce off of it, which makes it difficult to distinguish the waves that are reflected from the device versus what is reflected from the boundary. To overcome this limitation, an absorbing boundary known as the Perfectly Matched Layer (PML) can be added to the borders of the simulation space. In order to add this layer, we need to create an electric permittivity $\epsilon$ and magnetic permeability $\mu$ profiles that are twice the size of the simulation area. In general, we want the PML to be bigger than 10 pixels on every side of the simulation.
+
+<p align="center">
+  <img alt="3D Yee Grid" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/upml.png" width=40% heights=40%>
+</p>
+
+`solve_electric_field`: Solving for $E_z$ requires that we efine for which wavelength/wavenumber we are simulating for. Given the nature of the approach, we can only simulate one wavenumber at a time. After creating an (X, Y) grid where the $\epsilon$ and $\mu$ are defined, we can create an initial source field as defined by the equations of $f_src$. Once we have this source field, we create a wave matrix composed of the differentials and $\epsilon$ and $\mu$ as computed after adding the PML. That is 
+```
+    A = DHX @ URyy_i @ DEX + DHY @ URxx_i @ DEY + ERzz
+```
+Note that we need a mask matrix $Q$ that separates the Scattered Field and the Total Field. Once we have these matrices, we can solve for the electric field
+```
+    # Calculate source vector
+    b = (Q @ A - A @ Q) @ fsrc_flat
+
+    # Solve for field
+    f = linalg.spsolve(A, b)
+    f = np.reshape(f, (Nx, Ny), 'F')
+```
+
+**Note:** All of the arrays have to be flattened and inserted along the diagonal of a sparse matrix. The returning electric field also needs to be reshaped to be the size of the modeling area (MxN)
+
+### Putting it all together
+
+Now that we know how to simulate an electric field that passes through a device, how can we use this to create a signal as it would be received by an OCT device?
+
+It is relevant to now define the difference between the Scattered Field and the Total Field in the simulation. The Total Field is where our device is, and where we can see how the light moves and interacts with the materials in it. On the other hand, the scattered field is the electric field that goes out of the simulation after light has traversed through the material. That is, the scattered field is what a device like OCT would capture. 
+
+
+
+However, we are most interested is not the scattered field, but the reflectivity of the scattered field. In order to obtain this 
+
 
 
 
