@@ -72,13 +72,13 @@ $$ S(k) = |s(k, \omega)|^2 = \frac{1}{\Delta k \sqrt{\pi}}e^{- \frac{(k - k_0)}{
 
 Where $k_0$ is the central wavenumber of the light source spectrum and $\Delta k$ is the spectral bandwidth, which corresponds to the half-width-half-maximum of the light source power spectrum.
 
-From the power spectral density, we can simulate the reference electric field in the following way
+From the power spectral density, we can simulate the electric field from the reference arm in the following way
 
 $$  E_R = \frac{E_i}{\sqrt{2}} r_R e^{i2kz_R} $$
 
-Where $r_R$ is the electric field reflectivity of the reference reflector, $z_R$ is the distance from the beamsplitter to the reference arm, and the factor of $2$ corresponds to the distance that the light has to travel to and from the reference reflector. 
+Where $r_R$ is the reflectivity of the reference reflector, $z_R$ is the distance from the beamsplitter to the reference arm, and the factor of $2$ corresponds to the distance that the light has to travel to and from the reference reflector. 
 
-On the other hand, the electric field from the sample arm is defined as
+Similarly, the electric field from the sample arm is defined as
 
 $$  E_S = \frac{E_i}{\sqrt{2} }r_{S}e^{i2kz_S} $$
 
