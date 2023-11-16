@@ -223,3 +223,5 @@ After obtaining this intensity, we need to standardize it to apply the IFFT. In 
 </p>
 
 Note that the peaks roughly correspond to where the medium changed its electric permittivity values. The reason why the peaks do not align perfectly is because the Optical Path Distance does not always correspond to the Geometric Distance in a medium. Similarly, the A-line is symmetric due to the properties of IFFT. 
+
+**Note:** the images for this example were exclusively generated for this writeup. The code `compute_electric_simulation.py` saves the unprocessed A-line (including complex values), the intensity of the A-line (as showed in the last image), the Electric Reflectivity of the medium, and the reflectivity of the medium.
