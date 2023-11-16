@@ -78,11 +78,17 @@ $$  E_R = \frac{E_i}{\sqrt{2}} r_R e^{i2kz_R} $$
 
 Where $r_R$ is the electric field reflectivity of the reference reflector, $z_R$ is the distance from the beamsplitter to the reference arm, and the factor of $2$ corresponds to the distance that the light has to travel to and from the reference reflector. 
 
+On the other hand, the electric field from the sample arm is defined as
+
+$$  E_S = \frac{E_i}{\sqrt{2} }r_{S}e^{i2kz_S} $$
+
+where $r_{S}$ is the reflectivity of the tissue after the electric field has been scattered back to our reflector. Note that there are already very simple ways of modeling $r_S$, but these methods are very simple and do not consider light-matter interactions.
+
 In order to construct the A-line scan, it is necessary to take the inverse Fourier transform of $I_D(k, \omega)$ and subtract the dominant reference spectrum. That is the inverse Fourier transform will be applied to 
 
 $$  I_D(k) - |E_R|^2 $$
 
-Since the amplitude of the incident field is defined in terms of the wavenumber $k$, the inverse fourier transform will be in terms of depth $z$. To obtain the increment in the $z$-domain, we use the formula $\delta_z = 2 \pi / 2 \text{N} \delta_k$, where N is the number of sample points that are used to model the spectrum amplitude $s(k, \omega)$ and the electric fields $E_S(k)$. 
+Since the amplitude of the incident field is defined in terms of the wavenumber $k$, the inverse fourier transform will be in terms of depth $z$. To obtain the increment in the $z$-domain, we use the formula $\delta_z = 2 \pi / 2 \text{N} \delta_k$, where N is the number of sample points that are used to model the spectrum amplitude $s(k, \omega)$. 
 
 Computing the A-Line is a very straightforward approach from the equations presented in this writeup, however, we still need to figure out how to simulate the electric field that comes from the sample arm.
 
@@ -127,7 +133,7 @@ For more information about the implementation of a Finite-Difference Frequency-D
 `addupml2d_sparse`: During simulation, waves will propagate until they reach the boundary and will bounce off of it, which makes it difficult to distinguish the waves that are reflected from the device versus what is reflected from the boundary. To overcome this limitation, an absorbing boundary known as the Perfectly Matched Layer (PML) can be added to the borders of the simulation space. In order to add this layer, we need to create an electric permittivity $\epsilon$ and magnetic permeability $\mu$ profiles that are twice the size of the simulation area. In general, we want the PML to be bigger than 10 pixels on every side of the simulation.
 
 <p align="center">
-  <img alt="3D Yee Grid" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/upml.png" width=40% heights=40%>
+  <img alt="PML of a device" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/upml.png" width=40% heights=40%>
 </p>
 
 `solve_electric_field`: Solving for $E_z$ requires that we efine for which wavelength/wavenumber we are simulating for. Given the nature of the approach, we can only simulate one wavenumber at a time. After creating an (X, Y) grid where the $\epsilon$ and $\mu$ are defined, we can create an initial source field as defined by the equations of $f_src$. Once we have this source field, we create a wave matrix composed of the differentials and $\epsilon$ and $\mu$ as computed after adding the PML. That is 
@@ -153,7 +159,7 @@ Now that we know how to simulate an electric field that passes through a device,
 It is relevant to now define the difference between the Scattered Field and the Total Field in the simulation. The Total Field is where our device is, and where we can see how the light moves and interacts with the materials in it. On the other hand, the scattered field is the electric field that goes out of the simulation after light has traversed through the material. That is, the scattered field is what a device like OCT would capture. In the following figure, the scattered field is denoted as $E_ref$
 
 <p align="center">
-  <img alt="3D Yee Grid" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/RumpfEref.png" width=40% heights=40%>
+  <img alt="Scattered field and Transmitted field (Rumpf, 2022)" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/RumpfEref.png" width=40% heights=40%>
 </p>
 
 However, we are most interested is not the scattered field, but the reflectivity of the scattered field. In order to obtain this measurement, we devide the scattered field by the original source field.
@@ -170,9 +176,50 @@ Now that we are able to simulate the source power spectrum, the reference electr
 
 ### Example
 
+Let's say we want to simulate a single A-line from an OCT device with a central wavelength of 800nm and a bandwidth of 50 nm. Its source power spectrum in terms of wavelength would look as follows:
 
+<p align="center">
+  <img alt="Power Spectrum of Source Field" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_source_power_spectrum.png" width=45% heights=45%>
+</p>
 
+We want to know what is the A-line of a three layered medium, where the layers are distributed between 0 and 45 micrometers. Since we are only interested in a single A-Line, the lateral dimension of the electric permittivity profile is 1 pixel plus 20 pixels on each side to include the PML. The arrow denotes the direction of propagation of the source field.
 
+<p align="center">
+  <img alt="Electric permittivity" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_layered_medium.png" width=60% heights=60%>
+</p>
 
+Now that we have this electric permittivity profile, we can add the perfectly matched layer with `addupml2d_sparse`.
 
+Let's say we have 100 wavenumbers (k) in our power spectrum. For every single wavenumber, we will create derivative matrices using `yeeder_2d`. For every single one of these wavenumbers, we will solve for the electric profile after computing our matrix `A`. This is the result of one of such simulations:
 
+<p align="center">
+  <img alt="Total Field of simulation" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_electric_field.png" width=40% heights=40%>
+</p>
+
+This image shows a plane wave going up and down along the layered medium. Note that at the top and bottom of the total field, the values of the wave go to zero, which means that our PML is working. Similarly, note that the waves are not disrupted by the left and right boundaries.
+
+After getting all of these fields, we save the reflectivity from the scattered field of our simulations. The following is the visualization of the reflectivity from the sample arm as a function of wavenumber $r_S(k)$
+
+<p align="center">
+  <img alt="Reflectivity from the Sample Arm as a function of Wavenumber" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_reflected_fields.png" width=60% heights=60%>
+</p>
+
+Since we have the reflected field $r_S$ from the sample arm, and we can easily model the electric field from the reference arm and the sample arms via our equations for $E_R$ and $E_S$. Thus the intensity at the interferometer of the OCT will be 
+
+<p align="center">
+  <img alt="Intensity at the Interferogram" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_intensity.png" width=60% heights=60%>
+</p>
+
+Once we have the intensity at the inteferometer, we want to subtract the amplitude of the reflected field to minimize the dominant term in our Inverse Fourier Transform.
+
+<p align="center">
+  <img alt="Intensity at the Interferogram with background subtracted" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_intensity_no_background.png" width=60% heights=60%>
+</p>
+
+After obtaining this intensity, we need to standardize it to apply the IFFT. In order to do this, we add the "negative" frequencies of our simulation (which are all zero), and set our DC term equal to the average amplitude of our frequencies. After applying the IFFT and correcting the order of our array (for more information, read the documentation of numpy.fft.ifft), we obtain the A-Line of a three layered medium
+
+<p align="center">
+  <img alt="Intensity at the Interferogram with background subtracted" src="https://github.com/uncbiag/OCT-FDFD/blob/main/Readme_imgs/ex_aline.png" width=60% heights=60%>
+</p>
+
+Note that the peaks roughly correspond to where the medium changed its electric permittivity values. The reason why the peaks do not align perfectly is because the Optical Path Distance does not always correspond to the Geometric Distance in a medium. Similarly, the A-line is symmetric due to the properties of IFFT. 
