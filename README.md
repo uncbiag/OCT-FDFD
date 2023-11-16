@@ -23,7 +23,7 @@ sbatch slurm_electric_field_simulations.sl
 ```
 In `dashboard.py` you can change the simulation ID via the variable `slurm_offset`. Using SLURM arrays, the id will start on the offset and be added to the `SLURM_ARRAY_TASK_ID` environment variable. For more information on using SLURM arrays, you can refer to [this article]( https://blog.ronin.cloud/slurm-job-arrays/ )
 
-To move the files from the Longleaf cluster to your computer, you can use 
+Note that the purpose of using the SLURM script is to generate thousands of simulations in a quick manner. These thousands of files will be stored in the Longleaf cluster, so it is necessary to move them to your local computer. To move the files from the Longleaf cluster to your computer, you can use 
 ```
 scp onyen@longleaf.unc.edu:PATH/TO/DATASET LOCAL/DIRECTORY
 ```
@@ -154,7 +154,7 @@ Note that we need a mask matrix $Q$ that separates the Scattered Field and the T
 
 ### Putting it all together
 
-Now that we know how to simulate an electric field that passes through a device, how can we use this to create a signal as it would be received by an OCT device?
+Now that we know how to simulate an electric field that passes through a medium, how can we use this to create a signal as it would be received by an OCT device?
 
 It is relevant to now define the difference between the Scattered Field and the Total Field in the simulation. The Total Field is where our device is, and where we can see how the light moves and interacts with the materials in it. On the other hand, the scattered field is the electric field that goes out of the simulation after light has traversed through the material. That is, the scattered field is what a device like OCT would capture. In the following figure, the scattered field is denoted as $E_ref$
 
