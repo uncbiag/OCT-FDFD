@@ -25,7 +25,7 @@ In `dashboard.py` you can change the simulation ID via the variable `slurm_offse
 
 Note that the purpose of using the SLURM script is to generate thousands of simulations in a quick manner. These thousands of files will be stored in the Longleaf cluster, so it is necessary to move them to your local computer. To move the files from the Longleaf cluster to your computer, you can use 
 ```
-scp onyen@longleaf.unc.edu:PATH/TO/DATASET LOCAL/DIRECTORY
+scp -r onyen@longleaf.unc.edu:PATH/TO/DATASET LOCAL/DIRECTORY
 ```
 
 Once the files are copied, you can generate an annotation file using the code `make_dataset.py`. For more information on using Longleaf, please refer to [this guide](https://help.rc.unc.edu/getting-started-on-longleaf/)
