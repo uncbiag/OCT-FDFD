@@ -1,5 +1,5 @@
 import pandas as pd
-import random
+import numpy as np
 import os
 from electric_funcs import *
 from dashboard import *
@@ -39,7 +39,7 @@ def main():
         id = default_id
 
     # Initialize random seed based on id
-    random.seed(id)
+    np.random.seed(id)
 
     # Define FDFD Parameters
     SPACER = l_max
@@ -76,29 +76,22 @@ def main():
     t_0 = time.time()
     for j in range(num_sim):
         # Randomize the number of layers between 1 and 3
-        num_layers = random.randint(1, 3)
+        num_layers = np.random.randint(1, 4)
 
-        # Compute er1 and initialize a list of the electric permitivities and distances
-        er1 = random.uniform(ermin, ermax)
-        er = [er1]
-        z = []
+        # Compute er and initialize a list of the electric permitivities and distances
+        np.random.seed(id)
+        er = np.random.uniform(ermin, ermax, int(num_layers+1))
+        np.random.seed(id)
+        z = sorted(np.random.uniform(zmin, zmax, num_layers))
         r = []
 
-        # Computing the rest of the layers
-        for i in range(num_layers):
-            er_i = random.uniform(ermin, ermax)
-            er.append(er_i)
+        # Computing the reflectivity
+        for i in range(1, num_layers):
             n1 = np.sqrt(er[i])
-            n2 = np.sqrt(er_i)
+            n2 = np.sqrt(er[i-1])
             theta2 = np.arcsin((n1 * np.sin(theta)) / n2)
             r_i = (n1 * np.cos(theta) - n2 * np.cos(theta2)) / (n1 * np.cos(theta) + n2 * np.cos(theta2))
             r.append(r_i)
-            if i == 0:
-                z_i = random.uniform(zmin, zmax)
-                z.append(z_i)
-            else:
-                z_i = random.uniform(z[i-1], zmax)
-                z.append(z_i)
 
         # Adding values to dataframe
         if not running_slurm:
@@ -173,7 +166,7 @@ def main():
 
         # Continuously save dataframe
         if not running_slurm:
-            df.to_csv("reflected_fields_dataset_v2.csv", index=False)
+            df.to_csv("reflected_fields_dataset_20231113.csv", index=False)
 
         # Increase identification number
         if not running_slurm:
