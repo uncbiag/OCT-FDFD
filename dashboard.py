@@ -26,17 +26,21 @@ theta = 0 * degrees
 l0 = 800 * nanometers
 bw_l = 50 * nanometers
 num_sample_pts = 100
+num_sample_pts_2D = 1000
 
 # DEVICE
 NRES = 10
 NPML = [20, 20, 20, 20]
 Sy = 40 * micrometers
+Sx = 40 * micrometers
 
 # MATERIAL PROPERTIES
 ermin = 1
 ermax = 3.5
 zmin = 1
 zmax = 35
+s_avg_radius = 5 * micrometers
+s_std_radius = 2 * micrometers
 
 # SIMULATION
 default_id = 1
@@ -44,7 +48,9 @@ default_num_simulations = 1
 
 # DIRECTORIES
 OUT_DIR = "Dataset"
+OUT_DIR_2D = "Dataset_2D"
 
 # SLURM
 slurm_offset = 200
 slurm_dir = "/work/users/k/e/kenyavzz/Dataset"
+slurm_dir_2D = "/work/users/k/e/kenyavzz/Dataset_2D"
