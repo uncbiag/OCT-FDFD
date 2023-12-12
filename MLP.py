@@ -28,7 +28,14 @@ def numpy_loader(path):
         np_array = np.load(f)
         tensor = torch.tensor(np_array)
         tensor = torch.reshape(tensor, (1, 1, -1))
-        tensor = tensor.to(torch.float)
+        is_complex = torch.is_complex(tensor)
+        if not is_complex:
+            tensor = tensor.to(torch.float)
+        else:
+            real_tensor = tensor.real
+            complex_tensor = tensor.imag
+            tensor = torch.cat((real_tensor, complex_tensor), 0)
+            tensor = tensor.to(torch.float)
         return tensor
 
 
@@ -116,9 +123,11 @@ def visualize_data(data, targets, predictions=None, dz=0.930854):
     for i in range(rows):
         # Plot the A-Line
         if rows > 1:
-            axs[i, 0].plot(dz * np.arange(-int(len_data/2), int(len_data/2)+1), data[i].squeeze().cpu().numpy())
+            # axs[i, 0].plot(dz * np.arange(-int(len_data/2), int(len_data/2)+1), data[i].squeeze().cpu().numpy())
+            axs[i, 0].plot(data[i, 0].squeeze().cpu().numpy())
         else:
-            axs[0].plot(dz * np.arange(-int(len_data/2), int(len_data/2)+1), data[i].squeeze().cpu().numpy())
+            # axs[0].plot(dz * np.arange(-int(len_data/2), int(len_data/2)+1), data[i].squeeze().cpu().numpy())
+            axs[0].plot(data[i, 0].squeeze().cpu().numpy())
         # Plot where the prediction is for a 1 dimensional classifier
         if predictions is not None and len_targets == 1:
             if rows > 1:
@@ -258,7 +267,7 @@ class MLP(nn.Module):
         num_hidden_nodes (int): Number of hidden nodes per each layer
     """
 
-    def __init__(self, input_dim, output_dim, num_hidden_layers, num_hidden_nodes, data_type):
+    def __init__(self, input_dim, output_dim, num_channels, num_hidden_layers, num_hidden_nodes, data_type):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -266,23 +275,26 @@ class MLP(nn.Module):
         self.num_hidden = num_hidden_nodes
         self.is_complex = torch.is_complex(torch.ones(1).to(data_type))
         layers = [('dense1', nn.Linear(self.input_dim, self.num_hidden).to(data_type))]
-        layers.append(('batchnorm1', nn.BatchNorm2d(1).to(data_type)))
+        layers.append(('batchnorm1', nn.BatchNorm2d(num_channels).to(data_type)))
         if self.is_complex:
             layers.append(('relu1', ComplexReLU()))
         else:
             layers.append(('relu1', nn.ReLU()))
         for i in range(2, self.num_layers):
             layers.append((f'dense{i}', nn.Linear(self.num_hidden, self.num_hidden).to(data_type)))
-            layers.append((f'batchnorm{i}', nn.BatchNorm2d(1).to(data_type)))
+            layers.append((f'batchnorm{i}', nn.BatchNorm2d(num_channels).to(data_type)))
             if self.is_complex:
                 layers.append((f'relu{i}', ComplexReLU()))
             else:
                 layers.append((f'relu{i}', nn.ReLU()))
-        layers.append((f'dense{self.num_layers}', nn.Linear(self.num_hidden, self.output_dim).to(data_type)))
+        if num_channels > 1:
+            layers.append(('Flatten', nn.Flatten(start_dim=1, end_dim=-1).to(data_type)))
+        layers.append((f'dense{self.num_layers}', nn.Linear(num_channels * self.num_hidden, self.output_dim).to(data_type)))
         self.model = nn.Sequential(OrderedDict(layers))
 
     def forward(self, x):
-        return self.model(x)
+    	batch_size = x.shape[0]
+    	return self.model(x).view(batch_size, 1, 1, -1)
 
 
 # ------------------ TRAINING AND TESTING FUNCTIONS ------------------
@@ -333,6 +345,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
+                    if len(outputs.shape) > 2:
+                    	outputs.view(1, -1)
                     loss = criterion(outputs, labels)
 
                     # backward + optimize only if in training phase
@@ -375,9 +389,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
     plt.xlabel("Epochs")
     plt.show()
 
-    # load best model weights
-    # model.load_state_dict(best_model_wts)
-
     return model, best_model_wts
 
 
@@ -385,10 +396,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
 
 def main():
     # Creating the datasets and dataloaders
-    dataset_dir = "Dataset_Split_1Layer"
+    dataset_dir = "Dataset_Split_RF"
     data_dir = "data"
     target_dir = "target"
-    model_weight_file = 'Models/model_weights_ali_er_2l_512n_layers_BN_1Layer.pth'
+    model_weight_file = 'Models/model_weights_rf_er_2l_2048n_layers_BN_20231211.pth'
     annotations_file = {"train": os.path.join(dataset_dir, "train", "annotations_train.csv"),
                         "test": os.path.join(dataset_dir, "test", "annotations_test.csv")}
     task_datasets = {x: ALineDataset(annotations_file[x], os.path.join(dataset_dir, x, data_dir),
@@ -406,17 +417,19 @@ def main():
     # Getting the sizes and datatypes for the model
     input_dim = inputs[0].shape[-1]
     output_dim = targets[0].shape[-1]
+    num_channels = inputs.shape[1]
     data_type = inputs[0].dtype
-    is_complex = torch.is_complex(inputs[0])
+    # is_complex = torch.is_complex(inputs[0])
+    is_complex = False
     num_hidden_layers = 2
-    num_hidden_nodes = 512
+    num_hidden_nodes = 2048
 
     # Model
-    model = MLP(input_dim, output_dim, num_hidden_layers, num_hidden_nodes, data_type)
+    model = MLP(input_dim, output_dim, num_channels, num_hidden_layers, num_hidden_nodes, data_type)
     # model = UNet(up_mode='upconv')
 
     # Weight initalization
-    model.apply(weights_init_uniform_rule)
+    # model.apply(weights_init_uniform_rule)
 
     # Send model to device
     model.to(device)
@@ -435,13 +448,13 @@ def main():
         visualize_data(inputs, targets, predictions)
 
     # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=1e-2)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Loss function
     criterion = ComplexMSE() if is_complex else nn.MSELoss()
 
     # Step Function
-    step_lr = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
+    step_lr = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
     # Training
     model.train()
@@ -456,14 +469,17 @@ def main():
     predictions = model(inputs.to(device))
     visualize_data(inputs, targets, predictions)
 
-    # Visualize predictions on the test set
+    # Visualize predictions on the test with last model
+    inputs, targets = next(iter(dataloaders['test']))
+    predictions = model(inputs.to(device))
+    visualize_data(inputs, targets, predictions)
+
+    # Visualize predictions on the test set with best weights
     model.load_state_dict(best_model_wts)
     model.eval()
     inputs, targets = next(iter(dataloaders['test']))
     predictions = model(inputs.to(device))
     visualize_data(inputs, targets, predictions)
-
-
 
 
 if __name__ == '__main__':
